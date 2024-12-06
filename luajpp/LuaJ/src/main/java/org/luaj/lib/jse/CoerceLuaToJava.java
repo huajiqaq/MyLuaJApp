@@ -638,7 +638,7 @@ public class CoerceLuaToJava {
         Coercion floatCoercion = new NumericCoercion(NumericCoercion.TARGET_TYPE_FLOAT);
         Coercion doubleCoercion = new NumericCoercion(NumericCoercion.TARGET_TYPE_DOUBLE);
         Coercion stringCoercion = new StringCoercion(StringCoercion.TARGET_TYPE_STRING);
-        //Coercion bytesCoercion = new StringCoercion(StringCoercion.TARGET_TYPE_BYTES);
+        Coercion bytesCoercion = new StringCoercion(StringCoercion.TARGET_TYPE_BYTES);
 
         COERCIONS.put(Boolean.TYPE, boolCoercion);
         COERCIONS.put(Boolean.class, boolCoercion);
@@ -657,7 +657,7 @@ public class CoerceLuaToJava {
         COERCIONS.put(Double.TYPE, doubleCoercion);
         COERCIONS.put(Double.class, doubleCoercion);
         COERCIONS.put(String.class, stringCoercion);
-        //COERCIONS.put(byte[].class, bytesCoercion);
+        COERCIONS.put(byte[].class, bytesCoercion);
     }
 
     static Coercion getCoercion(Class c) {
