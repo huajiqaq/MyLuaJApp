@@ -81,7 +81,7 @@ public class LuaDouble extends LuaNumber {
 	}
 	
 	/** Don't allow ints to be boxed by DoubleValues  */
-    LuaDouble(double d) {
+	private LuaDouble(double d) {
 		this.v = d;
 	}
 
