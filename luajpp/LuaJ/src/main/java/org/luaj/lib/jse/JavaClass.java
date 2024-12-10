@@ -38,8 +38,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.luaj.LuaError;
+import org.luaj.LuaUserdata;
 import org.luaj.LuaValue;
 import org.luaj.Varargs;
+import org.luaj.lib.OneArgFunction;
+import org.luaj.lib.TwoArgFunction;
 
 /**
  * LuaValue that represents a Java class.
@@ -113,7 +116,7 @@ class JavaClass extends JavaInstance implements CoerceJavaToLua.Coercion {
             if(Map.class.isAssignableFrom(obj))
                 return CoerceJavaToLua.coerce(new CoerceLuaToJava.MapCoercion(obj).coerce(arg));
             if(List.class.isAssignableFrom(obj))
-                return CoerceJavaToLua.coerce(new CoerceLuaToJava.ListCoercion(obj).coerce(arg));
+                return CoerceJavaToLua.coerce(new CoerceLuaToJava.CollectionCoercion(obj).coerce(arg));
             if((obj.getModifiers() & Modifier.ABSTRACT) != 0){
                 try {
                     return LuajavaLib.override(obj,arg).call();
@@ -158,7 +161,7 @@ class JavaClass extends JavaInstance implements CoerceJavaToLua.Coercion {
                 if(Map.class.isAssignableFrom(obj))
                     return CoerceJavaToLua.coerce(new CoerceLuaToJava.MapCoercion(obj).coerce(arg));
                 if(List.class.isAssignableFrom(obj))
-                    return CoerceJavaToLua.coerce(new CoerceLuaToJava.ListCoercion(obj).coerce(arg));
+                    return CoerceJavaToLua.coerce(new CoerceLuaToJava.CollectionCoercion(obj).coerce(arg));
                 if((obj.getModifiers() & Modifier.ABSTRACT) != 0){
                     try {
                         return LuajavaLib.override(obj,arg).call();
@@ -275,14 +278,41 @@ class JavaClass extends JavaInstance implements CoerceJavaToLua.Coercion {
         return getMethod(NEW);
     }
 
+
+
+    static class ArrayFunction extends OneArgFunction {
+        final JavaClass javaClass;
+
+        ArrayFunction(JavaClass javaClass) {
+            this.javaClass = javaClass;
+        }
+
+        public LuaValue call(LuaValue luaValue) {
+            return CoerceJavaToLua.coerce(new CoerceLuaToJava.ArrayCoercion((Class) ((LuaUserdata) this.javaClass).m_instance).coerce(luaValue));
+        }
+    }
+
     @Override
     public LuaValue get(LuaValue key) {
-        if (key.isnumber())
-            return CoerceJavaToLua.coerce(Array.newInstance((Class<?>) touserdata(), key.toint()));
-        if(key.tojstring().equals("override")){
-            return new LuajavaLib.override(this);
+        if (key.isnumber()) {
+            int index = key.toint();
+            return CoerceJavaToLua.coerce(Array.newInstance((Class<?>) touserdata(), index));
+        }
+
+        String methodName = key.tojstring();
+        // 存疑
+        switch (methodName) {
+            case "new":
+                return getMethod(key);
+            case "array":
+                return new ArrayFunction(this);
+            case "class":
+                return this;
+            case "override":
+                return new LuajavaLib.override(this);
         }
         return super.get(key);
     }
+
 
 }

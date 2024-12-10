@@ -220,4 +220,52 @@ class JavaMethod extends JavaMember {
         }
     }
 
+
+
+    public static class JavaOOMethod extends LuaValue {
+        private final JavaInstance instance;
+        private final LuaValue myluavalue;
+
+        public JavaOOMethod(JavaInstance javaInstance, LuaValue luaValue) {
+            this.instance = javaInstance;
+            this.myluavalue = luaValue;
+        }
+
+        public LuaValue call() {
+            return this.myluavalue.invokeJavaMethod(this.instance, LuaValue.NONE);
+        }
+
+        public LuaValue call(LuaValue luaValue) {
+            return this.myluavalue.invokeJavaMethod(this.instance, luaValue);
+        }
+
+        public LuaValue call(LuaValue luaValue, LuaValue luaValue2) {
+            return this.myluavalue.invokeJavaMethod(this.instance, LuaValue.varargsOf(luaValue, luaValue2));
+        }
+
+        public LuaValue call(LuaValue luaValue, LuaValue luaValue2, LuaValue luaValue3) {
+            return this.myluavalue.invokeJavaMethod(this.instance, LuaValue.varargsOf(luaValue, luaValue2, luaValue3));
+        }
+
+        public Varargs invoke(Varargs varargs) {
+            return this.myluavalue.invokeJavaMethod(this.instance, varargs);
+        }
+
+        public Varargs invoke(LuaValue[] luaValueArr) {
+            return invoke(LuaValue.varargsOf(luaValueArr));
+        }
+
+        public String tojstring() {
+            return this.myluavalue.tojstring();
+        }
+
+        public int type() {
+            return this.myluavalue.type();
+        }
+
+        public String typename() {
+            return this.myluavalue.typename();
+        }
+    }
+
 }

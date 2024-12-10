@@ -412,6 +412,28 @@ public class PackageLib extends TwoArgFunction {
 		}
 	}
 
+
+	static class modcall extends VarArgFunction {
+
+		public Varargs invoke(Varargs args) {
+			LuaValue arg1 = args.arg1();
+			args = args.subargs(2);
+			LuaValue luaValue = arg1.get(PackageLib._M);
+			String str = "new";
+			arg1 = arg1.get(str);
+			if (arg1.isnil()) {
+				arg1 = luaValue.get(str);
+			}
+			LuaValue metatable = luaValue.getmetatable();
+			LuaTable luaTable = new LuaTable();
+			LuaTable clone = metatable.checktable().clone();
+			clone.set(LuaValue.INDEX, luaValue);
+			luaTable.setmetatable(clone);
+			arg1.invoke(luaTable, args);
+			return luaTable;
+		}
+	}
+
 	public final class module extends VarArgFunction {
 
 		public Varargs invoke(Varargs args) {
@@ -489,9 +511,14 @@ public class PackageLib extends TwoArgFunction {
 
 	private static final void modinit(LuaValue module, LuaString modname) {
 		/* module._M = module */
-		module.set(_M, module);
+		LuaTable luaTable = new LuaTable();
+		luaTable.set(LuaValue.INDEX, module);
+		luaTable.setmetatable(luaTable);
+		module.set(_M, luaTable);
 		int e = modname.lastIndexOf(_DOT);
 		module.set(_NAME, modname );
 		module.set(_PACKAGE, (e<0? EMPTYSTRING: modname.substring(0,e+1)) );
+		module.set(LuaValue.CALL, new modcall());
+		module.setmetatable(module);
 	}
 }

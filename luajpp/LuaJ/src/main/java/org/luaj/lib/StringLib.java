@@ -21,16 +21,9 @@
 ******************************************************************************/
 package org.luaj.lib;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 
-import org.luaj.Buffer;
-import org.luaj.LuaClosure;
-import org.luaj.LuaString;
-import org.luaj.LuaTable;
-import org.luaj.LuaUtf8String;
-import org.luaj.LuaValue;
-import org.luaj.Varargs;
+import org.luaj.*;
 import org.luaj.compiler.DumpState;
 
 /**
@@ -100,7 +93,8 @@ public class StringLib extends TwoArgFunction {
 		string.set("sub", new sub());
 		string.set("upper", new upper());
 		string.set("toutf8", new toutf8());
-
+		string.set("pack", new pack());
+		string.set("unpack", new unpack());
 		env.set("string", string);
 		if (!env.get("package").isnil()) env.get("package").get("loaded").set("string", string);
 		if (LuaString.s_metatable == null) {
@@ -117,9 +111,8 @@ public class StringLib extends TwoArgFunction {
 	 * default value for j is i.
 	 * 
 	 * Note that numerical codes are not necessarily portable across platforms.
-	 * 
-	 * @param args the calling args
-	 */
+	 *
+     */
 	static final class _byte extends VarArgFunction {
 		public Varargs invoke(Varargs args) {
 			LuaString s = args.checkstring(1);
@@ -148,9 +141,8 @@ public class StringLib extends TwoArgFunction {
 	 * numerical code equal to its corresponding argument.
 	 * 
 	 * Note that numerical codes are not necessarily portable across platforms.
-	 * 
-	 * @param args the calling VM
-	 */
+	 *
+     */
 	static final class _char extends VarArgFunction {
 		public Varargs invoke(Varargs args) {
 			int n = args.narg();
@@ -766,6 +758,217 @@ public class StringLib extends TwoArgFunction {
 			return LuaUtf8String.valueOfString(arg.tojstring());
 		}
 	}
+
+
+
+
+	final class unpack extends VarArgFunction {
+
+		public Varargs invoke(Varargs varargs) {
+			boolean bigEndian = true;
+			String format = varargs.checkjstring(1);
+			byte[] data = varargs.checkstring(2).tojstring().getBytes();
+			ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+			DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+			LuaTable result = new LuaTable();
+			int index = 1;
+
+			try {
+				for (int i = 0; i < format.length(); i++) {
+					char specifier = format.charAt(i);
+
+					switch (specifier) {
+						case '<':
+							bigEndian = false;
+							break;
+						case '>':
+							bigEndian = true;
+							break;
+						case 'x':
+							dataInputStream.readByte();
+							break;
+						case 'u':
+							result.set(index++, LuaString.valueOf(dataInputStream.readUTF()));
+							break;
+						case 's':
+							StringBuilder lengthStr = new StringBuilder();
+							while (++i < format.length() && Character.isDigit(format.charAt(i))) {
+								lengthStr.append(format.charAt(i));
+							}
+							int length = Integer.parseInt(lengthStr.toString());
+							if (length == 0) length = 4;
+							long stringLength = readNumber(dataInputStream, length, bigEndian);
+							byte[] stringBytes = new byte[(int) stringLength];
+							dataInputStream.readFully(stringBytes);
+							result.set(index++, LuaString.valueOf(stringBytes));
+							break;
+						case 'i':
+							result.set(index++, LuaInteger.valueOf((int) readNumber(dataInputStream, 4, bigEndian)));
+							break;
+						case 'f':
+							result.set(index++, LuaDouble.valueOf(Float.intBitsToFloat((int) readNumber(dataInputStream, 4, bigEndian))));
+							break;
+						case 'd':
+						case 'n':
+							result.set(index++, LuaDouble.valueOf(Double.longBitsToDouble(readNumber(dataInputStream, 8, bigEndian))));
+							break;
+						case 'c':
+							StringBuilder countStr = new StringBuilder();
+							while (++i < format.length() && Character.isDigit(format.charAt(i))) {
+								countStr.append(format.charAt(i));
+							}
+							int count = Integer.parseInt(countStr.toString());
+							byte[] bytes = new byte[count];
+							dataInputStream.readFully(bytes);
+							result.set(index++, LuaString.valueOf(bytes));
+							break;
+						case 'J':
+						case 'L':
+						case 'j':
+						case 'l':
+							result.set(index++, LuaInteger.valueOf(readNumber(dataInputStream, 8, bigEndian)));
+							break;
+						case 'I':
+						case 'T':
+							result.set(index++, LuaInteger.valueOf((int) readNumber(dataInputStream, 4, bigEndian)));
+							break;
+						case 'H':
+						case 'h':
+							result.set(index++, LuaInteger.valueOf((int) readNumber(dataInputStream, 2, bigEndian)));
+							break;
+						case 'B':
+						case 'b':
+							result.set(index++, LuaInteger.valueOf(dataInputStream.readByte()));
+							break;
+						default:
+							throw new LuaError("Unknown format specifier: " + specifier);
+					}
+				}
+			} catch (Exception e) {
+				throw new LuaError(e);
+			}
+
+			return result;
+		}
+
+		private long readNumber(DataInputStream dis, int bytes, boolean bigEndian) throws Exception {
+			byte[] buffer = new byte[bytes];
+			dis.readFully(buffer);
+			long value = 0;
+			for (int i = 0; i < bytes; i++) {
+				int shift = bigEndian ? (bytes - i - 1) * 8 : i * 8;
+				value |= ((buffer[i] & 0xFFL) << shift);
+			}
+			return value;
+		}
+	}
+
+
+
+	final class pack extends VarArgFunction {
+		public Varargs invoke(Varargs paramVarargs) {
+			String format = paramVarargs.checkjstring(1);
+			ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+			DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+			byte[] buffer = new byte[8];
+			int index = 1;
+			boolean bigEndian = true;
+
+			for (int i = 0; i < format.length(); i++) {
+				char specifier = format.charAt(i);
+				try {
+					switch (specifier) {
+						case 'x':
+							dataOutputStream.writeByte(0);
+							break;
+						case 'u':
+							dataOutputStream.writeUTF(paramVarargs.checkjstring(++index));
+							break;
+						case 's':
+							StringBuilder lengthStr = new StringBuilder();
+							while (++i < format.length() && Character.isDigit(format.charAt(i))) {
+								lengthStr.append(format.charAt(i));
+							}
+							int length = Integer.parseInt(lengthStr.toString());
+							if (length == 0) length = 4;
+							long value = paramVarargs.checkstring(index).length();
+							writeNumber(dataOutputStream, value, length, bigEndian);
+							index++;
+							break;
+						case 'i':
+							writeNumber(dataOutputStream, paramVarargs.checkint(++index), 4, bigEndian);
+							break;
+						case 'f':
+							writeNumber(dataOutputStream, Float.floatToIntBits((float) paramVarargs.checkdouble(++index)), 4, bigEndian);
+							break;
+						case 'd':
+						case 'n':
+							writeNumber(dataOutputStream, Double.doubleToLongBits(paramVarargs.checkdouble(++index)), 8, bigEndian);
+							break;
+						case 'c':
+							StringBuilder countStr = new StringBuilder();
+							while (++i < format.length() && Character.isDigit(format.charAt(i))) {
+								countStr.append(format.charAt(i));
+							}
+							int count = Integer.parseInt(countStr.toString());
+							dataOutputStream.write(paramVarargs.checkstring(index).substring(0, count).tojstring().getBytes());
+							index++;
+							break;
+						case 'J':
+						case 'L':
+						case 'j':
+						case 'l':
+							writeNumber(dataOutputStream, paramVarargs.checklong(++index), 8, bigEndian);
+							break;
+						case 'I':
+						case 'T':
+							writeNumber(dataOutputStream, paramVarargs.checklong(++index), 4, bigEndian);
+							break;
+						case 'H':
+						case 'h':
+							writeNumber(dataOutputStream, paramVarargs.checkint(++index), 2, bigEndian);
+							break;
+						case 'B':
+						case 'b':
+							dataOutputStream.writeByte(paramVarargs.checkint(++index));
+							break;
+						case '>':
+							bigEndian = false;
+							break;
+						case '<':
+							bigEndian = true;
+							break;
+						default:
+							throw new LuaError("Unknown format specifier: " + specifier);
+					}
+				} catch (Exception e) {
+					throw new LuaError(e);
+				}
+			}
+
+			try {
+				dataOutputStream.flush();
+			} catch (Exception e) {
+				throw new LuaError(e);
+			}
+
+			return LuaString.valueOf(byteArrayOutputStream.toByteArray());
+		}
+
+		private void writeNumber(DataOutputStream dos, long value, int bytes, boolean bigEndian) throws Exception {
+			byte[] buffer = new byte[bytes];
+			for (int i = 0; i < bytes; i++) {
+				int shift = bigEndian ? (bytes - i - 1) * 8 : i * 8;
+				buffer[i] = (byte) ((value >> shift) & 0xFF);
+			}
+			dos.write(buffer);
+		}
+	}
+
+
+
+
+
 
 	/**
 	 * This utility method implements both string.find and string.match.

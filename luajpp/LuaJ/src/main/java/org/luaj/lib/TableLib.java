@@ -72,9 +72,18 @@ public class TableLib extends TwoArgFunction {
 		table.set("clear", new clear());
 		table.set("size", new size());
 		table.set("find", new find());
+		table.set("gfind", new gfind());
+		table.set("foreach", new foreach());
+		table.set("foreachi", new foreachi());
 		table.set("dump", new dump());
 		table.set("const", new _const());
 		table.set("unpack", new unpack());
+		table.set("copy", new copy());
+		table.set("sub", new sub());
+		table.set("add", new add());
+		table.set("table", table);
+		table.set("unpack", new unpack());
+		table.set("dump", new dump());
 		env.set("table", table);
 		if (!env.get("package").isnil()) env.get("package").get("loaded").set("table", table);
 		return NIL;
@@ -199,4 +208,63 @@ public class TableLib extends TwoArgFunction {
 			return t.unpack(args.optint(2, 1), args.optint(3, len));
 		}
 	}
+
+
+
+	static class add extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			return args.checktable(1).add(args.arg(2));
+		}
+	}
+
+
+	static class copy extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			return args.checktable(1).copy(args.checkint(2), args.checkint(3), args.opttable(4, new LuaTable()), args.optint(5, 1));
+		}
+	}
+
+	static class foreach extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			return args.checktable(1).foreach(LuaValue.NIL, args.arg(2));
+		}
+	}
+
+	static class foreachi extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			return args.checktable(1).foreachi(LuaValue.NIL, args.arg(2));
+		}
+	}
+
+
+	static class GFindAux extends VarArgFunction {
+		private LuaValue lastMatch = LuaValue.NIL;
+		private final LuaTable subject;
+		private final LuaValue pattern;
+
+		public GFindAux(LuaTable subject, LuaValue pattern) {
+			this.subject = subject;
+			this.pattern = pattern;
+		}
+
+		public Varargs invoke(Varargs args) {
+			lastMatch = subject.find(pattern, lastMatch);
+			return lastMatch;
+		}
+	}
+
+	static class gfind extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			return new TableLib.GFindAux(args.checktable(1), args.arg(2));
+		}
+	}
+
+
+	static class sub extends VarArgFunction {
+		public Varargs invoke(Varargs args) {
+			LuaTable checktable = args.checktable(1);
+			return checktable.sub(args.optint(2, 1), args.optint(3, checktable.length()));
+		}
+	}
+
 }

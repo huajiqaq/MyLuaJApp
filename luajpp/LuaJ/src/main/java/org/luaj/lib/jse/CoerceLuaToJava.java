@@ -386,17 +386,17 @@ public class CoerceLuaToJava {
         }
     }
 
-    static final class ListCoercion implements Coercion {
+     static final class CollectionCoercion implements Coercion {
         final Class componentType;
         final Coercion componentCoercion;
 
-        public ListCoercion(Class componentType) {
+        public CollectionCoercion(Class componentType) {
             this.componentType = componentType;
             this.componentCoercion = new ObjectCoercion(componentType);
         }
 
         public String toString() {
-            return "ListCoercion(" + componentType.getName() + ")";
+            return "CollectionCoercion(" + componentType.getName() + ")";
         }
 
         public int score(LuaValue value) {
@@ -670,7 +670,7 @@ public class CoerceLuaToJava {
         } else if (Map.class.isAssignableFrom(c)) {
             co = new MapCoercion(c);
         } else if (List.class.isAssignableFrom(c)) {
-            co = new ListCoercion(c);
+            co = new CollectionCoercion(c);
         }/* else	if ( c.isInterface() ) {
 			co = new InterFaceCoercion(c);
 		}*/ else {

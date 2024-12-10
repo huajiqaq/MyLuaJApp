@@ -1611,7 +1611,110 @@ public class LuaTable extends LuaValue implements Metatable {
         }
     }
 
-    ;
+    public LuaTable copy(int startIndex, int endIndex, LuaTable targetTable) {
+        return copy(startIndex, endIndex, targetTable, 1);
+    }
+
+    public LuaTable copy(int start, int end, LuaTable target, int targetStart) {
+        int rawLen = rawlen();
+        int adjustedStart = start < 0 ? (start + rawLen) + 1 : start;
+        int adjustedEnd = end < 0 ? (end + rawLen) + 1 : end;
+
+        if (adjustedStart > adjustedEnd || adjustedStart < 1 || adjustedEnd > rawLen) {
+            return target;
+        }
+
+        int count = adjustedEnd - adjustedStart + 1;
+        int targetEnd = targetStart + count - 1;
+
+        if (target.length() < targetEnd) {
+            target.presize(targetEnd);
+        }
+
+        LuaValue[] sourceArray = array;
+        if (adjustedEnd < sourceArray.length) {
+            System.arraycopy(sourceArray, adjustedStart - 1, target.array, targetStart - 1, count);
+        } else {
+            for (int i = 0; i < count; i++) {
+                target.rawset(targetStart + i, rawget(adjustedStart + i));
+            }
+        }
+
+        return target;
+    }
+
+    public Varargs foreach(LuaValue key, LuaValue function) {
+        int index;
+        if (key.isnil()) {
+            index = 0;
+        } else if (key.isinttype()) {
+            index = key.toint();
+            if (index < 0) {
+                throw new LuaError("invalid key to 'next' 1: " + key);
+            }
+        } else {
+            throw new LuaError("invalid key to 'next' 1: " + key);
+        }
+
+        // Process array part
+        LuaValue[] arrayPart = array;
+        for (; index < arrayPart.length; index++) {
+            if (arrayPart[index] != null) {
+                Varargs value = m_metatable == null ? arrayPart[index] : m_metatable.arrayget(arrayPart, index);
+                if (value != null) {
+                    function.invoke(LuaInteger.valueOf(index + 1), value);
+                }
+            }
+        }
+
+        // Process hash part
+        Slot[] hashPart = hash;
+        for (int i = 0; i < hashPart.length; i++) {
+            for (Slot slot = hashPart[i]; slot != null; slot = slot.rest()) {
+                StrongSlot first = slot.first();
+                if (first != null) {
+                    function.invoke(first.toVarargs());
+                }
+            }
+        }
+
+        return LuaValue.NONE;
+    }
+
+    public Varargs foreachi(LuaValue key, LuaValue function) {
+        int startIndex;
+
+        if (key.isnil()) {
+            startIndex = 0;
+        } else if (key.isinttype()) {
+            startIndex = key.toint();
+        } else {
+            throw new LuaError("invalid key to 'next' 1: " + key);
+        }
+
+        LuaValue[] arrayPart = array;
+        for (int i = startIndex; i < arrayPart.length; i++) {
+            if (arrayPart[i] != null) {
+                Varargs value = m_metatable == null ? arrayPart[i] : m_metatable.arrayget(arrayPart, i);
+                if (value != null) {
+                    function.invoke(LuaInteger.valueOf(i + 1), value);
+                }
+            }
+        }
+
+        return LuaValue.NONE;
+    }
+
+
+    public LuaTable sub(int startIndex, int endIndex) {
+        return copy(startIndex, endIndex, new LuaTable());
+    }
+
+    public LuaTable sub(LuaValue startKey, LuaValue endKey) {
+        return sub(startKey.toint(), endKey.toint());
+    }
+
+
 
     private static final Slot[] NOBUCKETS = {};
 

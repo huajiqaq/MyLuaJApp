@@ -133,11 +133,19 @@ public class CoerceJavaToLua {
 	}
 
 
+	private static final class LongCoercion implements Coercion {
+		public LuaValue coerce(Object javaValue) {
+			return LuaInteger.valueOf(((Number) javaValue).longValue());
+		}
+	}
+
+
 	static final Map COERCIONS = new HashMap();
 	
 	static {
 		Coercion boolCoercion = new BoolCoercion() ;
 		Coercion intCoercion = new IntCoercion() ;
+		LongCoercion longCoercion = new LongCoercion();
 		Coercion charCoercion = new CharCoercion() ;
 		Coercion doubleCoercion = new DoubleCoercion() ;
 		Coercion stringCoercion = new StringCoercion() ;

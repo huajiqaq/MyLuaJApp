@@ -23,18 +23,12 @@ package org.luaj.lib.jse;
 
 
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 import org.luaj.Lua;
 import org.luaj.LuaError;
@@ -42,9 +36,6 @@ import org.luaj.LuaTable;
 import org.luaj.LuaUserdata;
 import org.luaj.LuaValue;
 import org.luaj.Varargs;
-
-
-import static org.luaj.lib.jse.JavaClass.NEW;
 
 /**
  * LuaValue that represents a Java instance.
@@ -164,8 +155,11 @@ class JavaInstance extends LuaUserdata {
             if (m != null) {
                 if (type == 0)
                     jclass.typeCache.put(key, TYPE_METHOD);
-                if(Lua.LUA_JAVA_OO)
-                m.setuservalue(this);
+                if(Lua.LUA_JAVA_OO) {
+                    JavaMethod.JavaOOMethod javaOOMethod = new JavaMethod.JavaOOMethod(this, m);
+                    vs.put(key, javaOOMethod);
+                    return javaOOMethod;
+                }
                 return m;
             }
         }

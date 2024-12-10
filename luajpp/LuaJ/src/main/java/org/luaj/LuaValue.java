@@ -3667,4 +3667,25 @@ public class LuaValue extends Varargs {
 		return argerror(1, "start must be > 0");
 	}
 
+	public LuaValue getJavaMethod(String str) {
+		return typerror("JavaInstance");
+	}
+
+	public LuaValue getJavaMethod(LuaValue luaValue) {
+		return typerror("JavaInstance");
+	}
+
+
+	public Object invokeJavaMethod(String str, Object... objArr) {
+		return typerror("JavaInstance");
+	}
+
+	public LuaValue invokeJavaMethod(String str, Varargs varargs) {
+		return typerror("JavaInstance");
+	}
+
+	public LuaValue invokeJavaMethod(LuaValue luaValue, Varargs varargs) {
+		return typerror("JavaInstance");
+	}
+
 }

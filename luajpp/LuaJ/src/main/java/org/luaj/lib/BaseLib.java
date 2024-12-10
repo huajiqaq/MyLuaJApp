@@ -24,15 +24,7 @@ package org.luaj.lib;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.luaj.Globals;
-import org.luaj.Lua;
-import org.luaj.LuaError;
-import org.luaj.LuaInteger;
-import org.luaj.LuaString;
-import org.luaj.LuaTable;
-import org.luaj.LuaThread;
-import org.luaj.LuaValue;
-import org.luaj.Varargs;
+import org.luaj.*;
 
 
 /**
@@ -114,6 +106,7 @@ public class BaseLib extends TwoArgFunction implements ResourceFinder {
         env.set("tonumber", new tonumber());
         env.set("tointeger", new tointeger());
         env.set("tostring", new tostring());
+        env.set("toutf8", new toutf8());
         env.set("type", new type());
         env.set("xpcall", new xpcall());
         if (Lua.LUA_FUNC_ENV || Lua.LUA_LOCAL_ENV) {
@@ -421,6 +414,28 @@ public class BaseLib extends TwoArgFunction implements ResourceFinder {
             }
         }
     }
+
+    public static final class toutf8 extends LibFunction {
+
+        public LuaValue call(LuaValue arg) {
+            LuaValue result = arg.metatag(LuaValue.TOSTRING);
+            if (!result.isnil()) {
+                return result.call(arg);
+            }
+
+            result = arg.tostring();
+            if (!result.isnil()) {
+                return result;
+            }
+
+            try {
+                return LuaUtf8String.valueOfString(arg.tojstring());
+            } catch (Exception e) {
+                return LuaUtf8String.valueOfString(arg.getClass().getName());
+            }
+        }
+    }
+
 
     // "type",  // (v) -> value
     static final class type extends LibFunction {
